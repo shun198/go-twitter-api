@@ -1,0 +1,53 @@
+version: '3.9'
+
+services:
+  app:
+    container_name: app
+    build:
+      context: .
+      dockerfile: containers/go/Dockerfile
+    volumes:
+      - ./application:/usr/local/go/src/twitter-api
+    ports:
+      - "8000:8000"
+      # デバッグ用
+      - "8080:8080"
+    command: air -c .air.toml
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - proxynet
+  db:
+    image: mongo:4.4
+    container_name: db
+    ports:
+      - 27017:27017
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=test
+      - MONGO_INITDB_ROOT_PASSWORD=test
+    volumes:
+      - db_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.runCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - proxynet
+  mail:
+    container_name: mail
+    image: schickling/mailcatcher
+    ports:
+      - "1080:1080"
+      - "1025:1025"
+    networks:
+      - proxynet
+networks:
+  proxynet:
+    name: testnet
+    external: false
+volumes:
+  db_data:
